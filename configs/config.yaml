@@ -1,0 +1,29 @@
+# Tennessee Eastman dataset LSTM Autoencoder Anomaly Detection configurstion
+
+# Dataset Configuration
+dataset:
+  faultfree_train_path: "./data/TEP_FaultFree_Training.RData"
+  faultfree_test_path: "./data/TEP_FaultFree_Testing.RData"
+  faulty_test_path: "./data/TEP_Faulty_Testing.RData"
+  faultfree_train_Robject: "fault_free_training"
+  faultfree_test_Robject: "fault_free_testing"
+  faulty_test_Robject: "faulty_testing"
+  test_runs_to_load: 20 # max 500
+  seq_len_train: 125 # must be a factor or 500
+  seq_len_test: 120 # must be a factor of 960
+  batch_size: 64 
+  val_ratio: 0.1
+
+# Autoencoder Hyperparameters
+ae_params:
+  embed_size: 100
+  num_layers: 2
+  dropout: 0.2
+
+# Training Parameters
+train_params:
+  lr: 0.0001
+  num_epochs: 3000
+
+# Model Saving
+save_path: "./models/ae_model_saved.pth"
