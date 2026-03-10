@@ -33,8 +33,6 @@ Example of how the code can be used for anomaly detection is shown in the follow
 
 If adapting the LSTM autoencoder for other datasets or for other purpose, `autoencoder.py` and `ae_utils.py` can probably be reused with minimal modification. 
 
-This `README.md` is generated from the `AE_AD.ipynb` notebook.
-
 ___
 ## Anomaly Detection Process
 This process detects anomalies based on the reconstruction errors of the autoencoder (AE). Since the dataset is a time-series dataset, the AE will be a LSTM AE.
@@ -54,56 +52,45 @@ config = load_config('./configs/config.yaml')
 X_train_df, X_val_df, dl_train, dl_val, scaler = load_train_data(config)
 ```
 
-    {"asctime": "2025-12-20T00:34:49+0800", "process": 19692, "name": "src.general_utils", "levelname": "INFO", "message": "Configuration loaded from ./configs/config.yaml"}
+    INFO - Configuration loaded from ./configs/config.yaml
 
 
     Loading train data, this may take a while...
 
 
-    {"asctime": "2025-12-20T00:34:52+0800", "process": 19692, "name": "src.datapipeline", "levelname": "INFO", "message": "Training RData loaded."}
-    {"asctime": "2025-12-20T00:35:00+0800", "process": 19692, "name": "src.datapipeline", "levelname": "INFO", "message": "Training/validation dataframes and dataloaders returned."}
-    {"asctime": "2025-12-20T00:35:00+0800", "process": 19692, "name": "src.datapipeline", "levelname": "INFO", "message": "Training and validation dataframes sizes are (225000, 55) & (25000, 55)."}
+    INFO - Training RData loaded.
+    INFO - Training/validation dataframes and dataloaders returned.
+    INFO - Training and validation dataframes sizes are (225000, 55) & (25000, 55).
 
 
 ### 2. Set Up AE 
 
 
 ```python
-from src.ae_utils import build_ae
+from src.ae_utils import AEUtils
 
 # each window shape is (batch_size, seq_len, num_features)
 input_size = next(iter(dl_train))[0].shape[2]
 
-ae_model, device, criterion, optimiser = build_ae(input_size=input_size,
-                                                  embed_size=config['ae_params']['embed_size'],
-                                                  num_layers=config['ae_params']['num_layers'],
-                                                  dropout=config['ae_params']['dropout'],
-                                                  lr=config['train_params']['lr'])
+ae_model = AEUtils(input_size=input_size,
+                   embed_size=config['ae_params']['embed_size'],
+                   num_layers=config['ae_params']['num_layers'],
+                   dropout=config['ae_params']['dropout'],
+                   lr=config["train_params"]['lr'])
 ```
 
-    {"asctime": "2025-12-20T00:35:07+0800", "process": 19692, "name": "src.ae_utils", "levelname": "INFO", "message": "Autoencoder and optimiser set up."}
+    INFO - Autoencoder and optimiser set up.
 
 
 ### 3. Train AE
 
 
 ```python
-from src.ae_utils import train_ae
-
-num_epochs = config['train_params']['num_epochs']
-
-train_loss, val_loss, ae_model, optimiser = train_ae(ae_model=ae_model, 
-                                                      dl_train=dl_train, 
-                                                      dl_val=dl_val, 
-                                                      criterion=criterion, 
-                                                      optimiser=optimiser, 
-                                                      num_epochs=num_epochs, 
-                                                      device=device,
-                                                      plot_loss=True)
+ae_model.train(dl_train=dl_train, dl_val=dl_val, num_epochs=config['train_params']['num_epochs'], plot_loss=True)
 ```
 
-    Training model for 3000 epochs: 100%|██████████| 3000/3000 [39:42<00:00,  1.26epoch/s, Train Loss=0.6833, Validation Loss=0.6923]
-    {"asctime": "2025-12-20T01:14:50+0800", "process": 19692, "name": "src.ae_utils", "levelname": "INFO", "message": "Autoencoder training epochs 0 to 3000 completed in 2383s."}
+    Training model for 3000 epochs: 100%|██████████| 3000/3000 [39:16<00:00,  1.27epoch/s, Train Loss=0.6818, Validation Loss=0.6972]
+    INFO - Autoencoder training epochs 0 to 3000 completed in 2357s.
 
 
 
@@ -118,10 +105,10 @@ from src.ae_utils import save_ae
 
 save_path = config['save_path']
 
-save_ae(ae_model, scaler, optimiser, num_epochs, train_loss, val_loss, save_path)
+save_ae(ae_model, scaler, save_path)
 ```
 
-    {"asctime": "2025-12-20T01:14:51+0800", "process": 19692, "name": "src.ae_utils", "levelname": "INFO", "message": "Autoencoder saved in ./models/ae_model_saved.pth."}
+    INFO - Autoencoder saved in ./models/ae_model_saved.pth.
 
 
 ### 3.1. Load AE & Resume Training
@@ -132,27 +119,18 @@ The `save_ae`, `load_ae` and `train_ae` functions allow for training to be resum
 ```python
 from src.ae_utils import load_ae
 
-ae_model, optimiser, device, scaler, curr_epoch, train_loss, val_loss = load_ae(save_path)
+ae_model, scaler = load_ae(save_path)
 
 # resume training for an additional 1000 epochs
-num_epochs = num_epochs + 1000
+num_epochs = ae_model.curr_epoch + 1000
 
-train_loss, val_loss, ae_model, optimiser = train_ae(ae_model=ae_model, 
-                                                      dl_train=dl_train, 
-                                                      dl_val=dl_val, 
-                                                      criterion=criterion, 
-                                                      optimiser=optimiser, 
-                                                      num_epochs=num_epochs, 
-                                                      device=device,
-                                                      curr_epoch=curr_epoch,
-                                                      train_loss=train_loss,
-                                                      val_loss=val_loss,
-                                                      plot_loss=True)
+ae_model.train(dl_train=dl_train, dl_val=dl_val, num_epochs=num_epochs, plot_loss=True)
 ```
 
-    {"asctime": "2025-12-20T01:14:51+0800", "process": 19692, "name": "src.ae_utils", "levelname": "INFO", "message": "Autoencoder loaded from ./models/ae_model_saved.pth."}
-    Training model for 4000 epochs: 100%|██████████| 1000/1000 [13:19<00:00,  1.25epoch/s, Train Loss=0.6735, Validation Loss=0.6859]
-    {"asctime": "2025-12-20T01:28:10+0800", "process": 19692, "name": "src.ae_utils", "levelname": "INFO", "message": "Autoencoder training epochs 3000 to 4000 completed in 799s."}
+    INFO - Autoencoder and optimiser set up.
+    INFO - Autoencoder loaded from ./models/ae_model_saved.pth.
+    Training model for 1000 epochs: 100%|██████████| 1000/1000 [12:58<00:00,  1.29epoch/s, Train Loss=0.6724, Validation Loss=0.6957]
+    INFO - Autoencoder training epochs 0 to 1000 completed in 778s.
 
 
 
@@ -163,10 +141,10 @@ train_loss, val_loss, ae_model, optimiser = train_ae(ae_model=ae_model,
 
 
 ```python
-save_ae(ae_model, scaler, optimiser, num_epochs, train_loss, val_loss, save_path)
+save_ae(ae_model, scaler, save_path)
 ```
 
-    {"asctime": "2025-12-20T01:28:10+0800", "process": 19692, "name": "src.ae_utils", "levelname": "INFO", "message": "Autoencoder saved in ./models/ae_model_saved.pth."}
+    INFO - Autoencoder saved in ./models/ae_model_saved.pth.
 
 
 ### 4. Data Reconstruction and Anomaly Detection with AE
@@ -186,10 +164,10 @@ X_test_df, dl_test = load_inference_data(config, scaler)
     Loading test data, this may take a while...
 
 
-    {"asctime": "2025-12-20T01:28:17+0800", "process": 19692, "name": "src.datapipeline", "levelname": "INFO", "message": "Faultfree test RData loaded."}
-    {"asctime": "2025-12-20T01:30:48+0800", "process": 19692, "name": "src.datapipeline", "levelname": "INFO", "message": "Faulty test RData loaded."}
-    {"asctime": "2025-12-20T01:31:17+0800", "process": 19692, "name": "src.datapipeline", "levelname": "INFO", "message": "Test dataframe and dataloader returned, 20 runs for each faultNumber."}
-    {"asctime": "2025-12-20T01:31:17+0800", "process": 19692, "name": "src.datapipeline", "levelname": "INFO", "message": "Test dataframe size is (403200, 55)."}
+    INFO - Faultfree test RData loaded.
+    INFO - Faulty test RData loaded.
+    INFO - Test dataframe and dataloader returned, 20 runs for each faultNumber.
+    INFO - Test dataframe size is (403200, 55).
 
 
 ### 4.2 Process Test Data for Evaluation
@@ -199,11 +177,11 @@ Creating the `AE_eval` class object will trigger an inference run on the given t
 ```python
 from src.eval_tools import AE_eval
 
-ae_eval = AE_eval(X_test_df, dl_test, ae_model, device, scaler)
+ae_eval = AE_eval(X_test_df, dl_test, ae_model, scaler)
 ```
 
-    Autoencoder inferencing for 53 batches: 100%|██████████| 53/53 [00:01<00:00, 30.75batch/s]
-    {"asctime": "2025-12-20T01:31:20+0800", "process": 19692, "name": "src.ae_utils", "levelname": "INFO", "message": "Autoencoder inferencing for 53 test batches completed."}
+    Autoencoder inferencing for 53 batches: 100%|██████████| 53/53 [00:02<00:00, 24.76batch/s]
+    INFO - Autoencoder inferencing for 53 test batches completed.
 
 
 Calling the `reconstruction_RMSE()` method populates a dataframe with the RMSE of all test simulation runs.
@@ -213,7 +191,7 @@ Calling the `reconstruction_RMSE()` method populates a dataframe with the RMSE o
 ae_eval.reconstruction_RMSE()
 ```
 
-    faultNumber: 100%|██████████| 21/21 [01:42<00:00,  4.90s/it]
+    faultNumber: 100%|██████████| 21/21 [00:58<00:00,  2.78s/it]
 
 
 
@@ -265,121 +243,121 @@ ae_eval.reconstruction_RMSE()
       <th>0</th>
       <td>0.0</td>
       <td>1.0</td>
-      <td>0.858346</td>
-      <td>1.056901</td>
-      <td>0.916628</td>
-      <td>0.909936</td>
-      <td>1.015676</td>
-      <td>1.020447</td>
-      <td>0.448625</td>
-      <td>0.954941</td>
+      <td>0.880089</td>
+      <td>1.003087</td>
+      <td>0.925694</td>
+      <td>0.907644</td>
+      <td>1.017489</td>
+      <td>1.016953</td>
+      <td>0.426612</td>
+      <td>0.959295</td>
       <td>...</td>
-      <td>0.894276</td>
-      <td>0.855289</td>
-      <td>1.006675</td>
-      <td>0.572446</td>
-      <td>0.888005</td>
-      <td>1.025035</td>
-      <td>1.001644</td>
-      <td>0.255462</td>
-      <td>1.003629</td>
-      <td>1.041911</td>
+      <td>0.898315</td>
+      <td>0.877591</td>
+      <td>1.006192</td>
+      <td>0.590311</td>
+      <td>0.881636</td>
+      <td>1.024897</td>
+      <td>1.000829</td>
+      <td>0.264655</td>
+      <td>0.971868</td>
+      <td>1.041640</td>
     </tr>
     <tr>
       <th>1</th>
       <td>0.0</td>
       <td>2.0</td>
-      <td>0.800197</td>
-      <td>1.070368</td>
-      <td>0.858171</td>
-      <td>0.856599</td>
-      <td>0.996577</td>
-      <td>1.018743</td>
-      <td>0.394431</td>
-      <td>0.924246</td>
+      <td>0.791371</td>
+      <td>0.999688</td>
+      <td>0.850293</td>
+      <td>0.854301</td>
+      <td>0.996791</td>
+      <td>1.012993</td>
+      <td>0.373188</td>
+      <td>0.916612</td>
       <td>...</td>
-      <td>0.838791</td>
-      <td>0.797450</td>
-      <td>0.957198</td>
-      <td>0.513685</td>
-      <td>0.891166</td>
-      <td>1.031964</td>
-      <td>0.962914</td>
-      <td>0.207021</td>
-      <td>1.012441</td>
-      <td>1.008413</td>
+      <td>0.835365</td>
+      <td>0.788064</td>
+      <td>0.957395</td>
+      <td>0.502607</td>
+      <td>0.877210</td>
+      <td>1.030475</td>
+      <td>0.962912</td>
+      <td>0.190672</td>
+      <td>0.983016</td>
+      <td>1.008679</td>
     </tr>
     <tr>
       <th>2</th>
       <td>0.0</td>
       <td>3.0</td>
-      <td>0.812085</td>
-      <td>1.130112</td>
-      <td>0.872404</td>
-      <td>0.866090</td>
-      <td>0.970331</td>
-      <td>0.986378</td>
-      <td>0.469725</td>
-      <td>0.923671</td>
+      <td>0.792839</td>
+      <td>1.085337</td>
+      <td>0.868967</td>
+      <td>0.867859</td>
+      <td>0.970959</td>
+      <td>0.983802</td>
+      <td>0.459200</td>
+      <td>0.928987</td>
       <td>...</td>
-      <td>0.891232</td>
-      <td>0.815816</td>
-      <td>1.029090</td>
-      <td>0.580082</td>
-      <td>0.883356</td>
-      <td>0.976178</td>
-      <td>0.998885</td>
-      <td>0.263494</td>
-      <td>1.004581</td>
-      <td>1.026165</td>
+      <td>0.884623</td>
+      <td>0.795389</td>
+      <td>1.032016</td>
+      <td>0.571718</td>
+      <td>0.879546</td>
+      <td>0.977487</td>
+      <td>1.000270</td>
+      <td>0.297306</td>
+      <td>0.989136</td>
+      <td>1.026241</td>
     </tr>
     <tr>
       <th>3</th>
       <td>0.0</td>
       <td>4.0</td>
-      <td>0.865063</td>
-      <td>1.131628</td>
-      <td>0.892067</td>
-      <td>0.876384</td>
-      <td>1.008476</td>
-      <td>1.022123</td>
-      <td>0.479461</td>
-      <td>0.915811</td>
+      <td>0.826583</td>
+      <td>1.065298</td>
+      <td>0.880445</td>
+      <td>0.865911</td>
+      <td>1.009061</td>
+      <td>1.021981</td>
+      <td>0.439997</td>
+      <td>0.905820</td>
       <td>...</td>
-      <td>0.893651</td>
-      <td>0.867491</td>
-      <td>0.969610</td>
-      <td>0.546258</td>
-      <td>0.831886</td>
-      <td>0.997193</td>
-      <td>0.963426</td>
-      <td>0.281650</td>
-      <td>1.013269</td>
-      <td>0.968907</td>
+      <td>0.885976</td>
+      <td>0.828836</td>
+      <td>0.968427</td>
+      <td>0.507255</td>
+      <td>0.832542</td>
+      <td>0.998083</td>
+      <td>0.961719</td>
+      <td>0.287971</td>
+      <td>0.981225</td>
+      <td>0.969403</td>
     </tr>
     <tr>
       <th>4</th>
       <td>0.0</td>
       <td>5.0</td>
-      <td>0.852559</td>
-      <td>1.059954</td>
-      <td>0.896926</td>
-      <td>0.913151</td>
-      <td>0.986588</td>
-      <td>1.003159</td>
-      <td>0.439666</td>
-      <td>0.934200</td>
+      <td>0.821180</td>
+      <td>0.986490</td>
+      <td>0.882254</td>
+      <td>0.908796</td>
+      <td>0.987980</td>
+      <td>1.001493</td>
+      <td>0.379872</td>
+      <td>0.928540</td>
       <td>...</td>
-      <td>0.888783</td>
-      <td>0.851015</td>
-      <td>0.946380</td>
-      <td>0.512763</td>
-      <td>0.895703</td>
-      <td>1.022570</td>
-      <td>1.000608</td>
-      <td>0.261032</td>
-      <td>0.989208</td>
-      <td>0.977163</td>
+      <td>0.876636</td>
+      <td>0.820239</td>
+      <td>0.946197</td>
+      <td>0.503354</td>
+      <td>0.893168</td>
+      <td>1.022826</td>
+      <td>1.002401</td>
+      <td>0.218615</td>
+      <td>0.954146</td>
+      <td>0.977718</td>
     </tr>
     <tr>
       <th>...</th>
@@ -409,121 +387,121 @@ ae_eval.reconstruction_RMSE()
       <th>415</th>
       <td>20.0</td>
       <td>16.0</td>
-      <td>0.904010</td>
-      <td>1.059623</td>
-      <td>0.986793</td>
-      <td>0.958587</td>
-      <td>0.995757</td>
-      <td>1.038436</td>
-      <td>0.807321</td>
-      <td>0.992870</td>
+      <td>0.913361</td>
+      <td>1.052760</td>
+      <td>0.957471</td>
+      <td>0.954048</td>
+      <td>0.993662</td>
+      <td>1.041146</td>
+      <td>0.931407</td>
+      <td>0.995391</td>
       <td>...</td>
-      <td>0.977004</td>
-      <td>0.903044</td>
-      <td>0.984826</td>
-      <td>4.676193</td>
-      <td>0.978040</td>
-      <td>0.999964</td>
-      <td>1.023047</td>
-      <td>0.519090</td>
-      <td>1.063770</td>
-      <td>1.001071</td>
+      <td>0.972520</td>
+      <td>0.909973</td>
+      <td>0.984693</td>
+      <td>4.769154</td>
+      <td>1.012694</td>
+      <td>1.000100</td>
+      <td>1.023412</td>
+      <td>0.569944</td>
+      <td>1.064683</td>
+      <td>1.002294</td>
     </tr>
     <tr>
       <th>416</th>
       <td>20.0</td>
       <td>17.0</td>
-      <td>0.912185</td>
-      <td>1.090031</td>
-      <td>0.989175</td>
-      <td>0.915629</td>
-      <td>1.030389</td>
-      <td>1.002018</td>
-      <td>0.777253</td>
-      <td>0.979058</td>
+      <td>0.900638</td>
+      <td>1.098103</td>
+      <td>0.964945</td>
+      <td>0.916011</td>
+      <td>1.031741</td>
+      <td>1.004140</td>
+      <td>0.873783</td>
+      <td>0.983868</td>
       <td>...</td>
-      <td>0.928117</td>
-      <td>0.911145</td>
-      <td>0.975060</td>
-      <td>4.660039</td>
-      <td>0.959050</td>
-      <td>0.977748</td>
-      <td>1.025838</td>
-      <td>0.400081</td>
-      <td>1.045549</td>
-      <td>1.025795</td>
+      <td>0.926652</td>
+      <td>0.897734</td>
+      <td>0.976432</td>
+      <td>4.786109</td>
+      <td>0.951849</td>
+      <td>0.977040</td>
+      <td>1.027259</td>
+      <td>0.476004</td>
+      <td>1.056296</td>
+      <td>1.026162</td>
     </tr>
     <tr>
       <th>417</th>
       <td>20.0</td>
       <td>18.0</td>
-      <td>0.908239</td>
-      <td>1.117907</td>
-      <td>0.985770</td>
-      <td>0.944729</td>
-      <td>1.014390</td>
-      <td>1.043493</td>
-      <td>0.864034</td>
-      <td>0.966538</td>
+      <td>0.911694</td>
+      <td>1.114207</td>
+      <td>0.941790</td>
+      <td>0.949755</td>
+      <td>1.013030</td>
+      <td>1.049410</td>
+      <td>0.983578</td>
+      <td>0.977883</td>
       <td>...</td>
-      <td>0.988979</td>
-      <td>0.907707</td>
-      <td>0.983762</td>
-      <td>4.513570</td>
-      <td>0.960903</td>
-      <td>0.991530</td>
-      <td>1.015370</td>
-      <td>0.472900</td>
-      <td>1.098075</td>
-      <td>1.018542</td>
+      <td>0.958664</td>
+      <td>0.911338</td>
+      <td>0.983964</td>
+      <td>4.657758</td>
+      <td>0.972685</td>
+      <td>0.990367</td>
+      <td>1.017721</td>
+      <td>0.529892</td>
+      <td>1.094599</td>
+      <td>1.022070</td>
     </tr>
     <tr>
       <th>418</th>
       <td>20.0</td>
       <td>19.0</td>
-      <td>0.901677</td>
-      <td>1.143558</td>
-      <td>0.951024</td>
-      <td>0.935766</td>
-      <td>1.001001</td>
-      <td>1.078849</td>
-      <td>0.825711</td>
-      <td>0.953032</td>
+      <td>0.911375</td>
+      <td>1.090411</td>
+      <td>0.927493</td>
+      <td>0.928917</td>
+      <td>1.002062</td>
+      <td>1.074637</td>
+      <td>0.890171</td>
+      <td>0.958829</td>
       <td>...</td>
-      <td>0.950554</td>
-      <td>0.902401</td>
-      <td>0.982018</td>
-      <td>4.631778</td>
-      <td>0.932676</td>
-      <td>1.011697</td>
-      <td>1.045658</td>
-      <td>0.509842</td>
-      <td>1.147253</td>
-      <td>1.011122</td>
+      <td>0.938975</td>
+      <td>0.913829</td>
+      <td>0.984918</td>
+      <td>4.752060</td>
+      <td>0.948111</td>
+      <td>1.012444</td>
+      <td>1.044894</td>
+      <td>0.607917</td>
+      <td>1.127797</td>
+      <td>1.013158</td>
     </tr>
     <tr>
       <th>419</th>
       <td>20.0</td>
       <td>20.0</td>
-      <td>0.937926</td>
-      <td>1.110646</td>
-      <td>0.997996</td>
-      <td>0.991136</td>
-      <td>1.002017</td>
-      <td>1.037034</td>
-      <td>0.868797</td>
-      <td>0.996252</td>
+      <td>0.989460</td>
+      <td>1.185355</td>
+      <td>0.994532</td>
+      <td>1.018454</td>
+      <td>1.003444</td>
+      <td>1.041711</td>
+      <td>0.948219</td>
+      <td>0.995981</td>
       <td>...</td>
-      <td>0.972569</td>
-      <td>0.940493</td>
-      <td>1.028328</td>
-      <td>4.774306</td>
-      <td>1.014280</td>
-      <td>0.967093</td>
-      <td>0.984628</td>
-      <td>0.530539</td>
-      <td>1.116088</td>
-      <td>1.030328</td>
+      <td>0.991665</td>
+      <td>0.990674</td>
+      <td>1.028022</td>
+      <td>4.927338</td>
+      <td>0.949200</td>
+      <td>0.966408</td>
+      <td>0.983996</td>
+      <td>0.744534</td>
+      <td>1.142989</td>
+      <td>1.031503</td>
     </tr>
   </tbody>
 </table>
@@ -608,7 +586,7 @@ ae_eval.find_high_RMSE(RMSE_threshold=1.4)
     <tr>
       <th>2</th>
       <td>2</td>
-      <td>[xmeas_1, xmeas_3, xmeas_4, xmeas_6, xmeas_7, ...</td>
+      <td>[xmeas_3, xmeas_4, xmeas_6, xmeas_7, xmeas_10,...</td>
     </tr>
     <tr>
       <th>3</th>
@@ -623,7 +601,7 @@ ae_eval.find_high_RMSE(RMSE_threshold=1.4)
     <tr>
       <th>5</th>
       <td>5</td>
-      <td>[xmeas_11, xmeas_19, xmeas_20, xmeas_21, xmeas...</td>
+      <td>[xmeas_20, xmv_11]</td>
     </tr>
     <tr>
       <th>6</th>
@@ -638,7 +616,7 @@ ae_eval.find_high_RMSE(RMSE_threshold=1.4)
     <tr>
       <th>8</th>
       <td>8</td>
-      <td>[xmeas_1, xmeas_2, xmeas_3, xmeas_4, xmeas_7, ...</td>
+      <td>[xmeas_1, xmeas_3, xmeas_4, xmeas_7, xmeas_8, ...</td>
     </tr>
     <tr>
       <th>9</th>
@@ -648,7 +626,7 @@ ae_eval.find_high_RMSE(RMSE_threshold=1.4)
     <tr>
       <th>10</th>
       <td>10</td>
-      <td>[xmeas_18, xmeas_19]</td>
+      <td>[xmeas_18]</td>
     </tr>
     <tr>
       <th>11</th>
