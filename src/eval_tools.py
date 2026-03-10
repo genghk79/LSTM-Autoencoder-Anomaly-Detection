@@ -2,14 +2,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import torch
 from typing import Optional, Union
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import StandardScaler
-from src.ae_utils import inference_ae
 from src.datapipeline import tensor_to_df
-from src.autoencoder import LSTMAutoencoder
+from src.ae_utils import AEUtils
 
 
 class AE_eval():
@@ -22,7 +20,6 @@ class AE_eval():
         X_test_df: Test DataFrame containing original data.
         dl_test: DataLoader for test data.
         ae_model: Trained LSTM autoencoder model.
-        device: Device to run inference on (CPU or CUDA).
         scaler: StandardScaler used for data normalization.
 
     Attributes:
@@ -36,15 +33,20 @@ class AE_eval():
         RMSE: DataFrame containing RMSE values per feature and simulation run.
     """
 
-    def __init__(self, X_test_df: pd.DataFrame, dl_test: DataLoader,
-                 ae_model: LSTMAutoencoder, device: torch.device, scaler: StandardScaler) -> None:
+    def __init__(
+            self, 
+            X_test_df: pd.DataFrame, 
+            dl_test: DataLoader,
+            ae_model: AEUtils, 
+            scaler: StandardScaler
+        ) -> None:
+
         self.X_test_df = X_test_df
         self.scaler = scaler
         self.ae_model = ae_model
-        self.device = device
         self.dl_test = dl_test
         
-        self.recon_tensor = inference_ae(ae_model, dl_test, device)
+        self.recon_tensor = self.ae_model.inference(dl_test)
         self.recon_df = tensor_to_df(X_test_df, self.recon_tensor, self.scaler)
 
         self.RMSE = pd.DataFrame([])
@@ -77,7 +79,9 @@ class AE_eval():
         RMSEs = np.zeros((num_runs * num_faults, len(X_test_scaled.columns)-1))
 
         # loop through all faultNumber and simulationRun
-        pbar = tqdm(range(X_test_scaled['faultNumber'].min(), X_test_scaled['faultNumber'].max()+1), desc="faultNumber")
+        pbar = tqdm(range(X_test_scaled['faultNumber'].min(), 
+                          X_test_scaled['faultNumber'].max()+1), 
+                          desc="faultNumber")
         for fault_n in pbar:
             for run_n in range(X_test_scaled['simulationRun'].min(), X_test_scaled['simulationRun'].max()+1):
                 a = fault_n - X_test_scaled['faultNumber'].min()
