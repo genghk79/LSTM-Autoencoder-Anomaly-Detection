@@ -15,19 +15,6 @@ logger = logging.getLogger(__name__)
 class AEUtils():
     """Building, training, and inference class for LSTM autoencoder
 
-    Args:
-        input_size: Number of features in the input sequence.
-        embed_size: Size of the hidden state embedding.
-        num_layers: Number of stacked LSTM layers.
-        dropout: Dropout probability for regularization.
-        lr: Learning rate of optimiser.
-        criterion: Loss function (e.g., MSELoss).
-        optimiser: Optimizer for updating model parameters.
-        optimiser_kwargs: Key word arguments for optimiser.
-        curr_epoch: Current epoch number (for resuming training)
-        train_loss: Training loss history (for resuming training)
-        val_loss: Validation loss history (for resuming training)
-
     Attributes:
         ae_model: LSTM autoencoder model built.
         device: Device to run training on (CPU or CUDA).
@@ -37,6 +24,10 @@ class AEUtils():
         curr_epoch: Current epoch number.
         train_loss: Training loss history.
         val_loss: Validation loss history.
+
+    Methods:
+        train(): Train the LSTM autoencoder model.
+        inference(): Perform inference using the trained autoencoder.
     """
     def __init__(
             self,
@@ -52,6 +43,21 @@ class AEUtils():
             train_loss: list[float]=[],
             val_loss: list[float]=[],
     ):
+        """Initialise the LSTM autoencoder
+        
+        Args:
+            input_size: Number of features in the input sequence.
+            embed_size: Size of the hidden state embedding.
+            num_layers: Number of stacked LSTM layers.
+            dropout: Dropout probability for regularization.
+            lr: Learning rate of optimiser.
+            criterion: Loss function (e.g., MSELoss).
+            optimiser: Optimizer for updating model parameters.
+            optimiser_kwargs: Key word arguments for optimiser.
+            curr_epoch: Current epoch number (for resuming training)
+            train_loss: Training loss history (for resuming training)
+            val_loss: Validation loss history (for resuming training)
+        """
         self.ae_model = LSTMAutoencoder(
             input_size=input_size, 
             embed_size=embed_size, 

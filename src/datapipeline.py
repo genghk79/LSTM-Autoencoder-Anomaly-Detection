@@ -10,8 +10,11 @@ from torch.utils.data import TensorDataset, DataLoader
 logger = logging.getLogger(__name__)
 
 
-def create_data_tensor(X_df: pd.DataFrame, seq_len: int, 
-                       scaler: Optional[StandardScaler] = None) -> Tuple[torch.Tensor, StandardScaler]:
+def create_data_tensor(
+        X_df: pd.DataFrame, 
+        seq_len: int, 
+        scaler: Optional[StandardScaler] = None,
+    ) -> Tuple[torch.Tensor, StandardScaler]:
     """Convert DataFrame to tensor sequences with standardization.
 
     Splits data into fixed-length sequences for time series modeling.
