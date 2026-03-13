@@ -138,7 +138,11 @@ class AE_eval():
             RMSE_threshold: RMSE value above which features are considered anomalous.
 
         Returns:
-            DataFrame with columns: faultNumber and highMSEcolumns (list of feature names).
+            DataFrame with columns: 
+                - faultNumber 
+                - highMSEcolumns (list of feature names)
+                - anormCount (no. of sample runs that are flagged positive)
+                - feature columns with counts of no. of sample runs where this feature is flagged positive.
         """
 
         # get feature names
@@ -152,7 +156,10 @@ class AE_eval():
             for col in col_names:
                 if self.RMSE.loc[self.RMSE['faultNumber']==fault_n, col].mean() >= RMSE_threshold:
                     cols.append(col)
-            over_threshold.append({'faultNumber': fault_n, 'highMSEcolumns': cols})
+            anorm_count = (self.RMSE.loc[self.RMSE['faultNumber']==fault_n, col_names] >= RMSE_threshold).any(axis=1).sum()
+            over_threshold.append({'faultNumber': fault_n, 'highMSEcolumns': cols, 'anormCount': anorm_count} | 
+                                  {key: len(self.RMSE.loc[(self.RMSE['faultNumber']==fault_n) & (self.RMSE[key] >= RMSE_threshold)]) for key in col_names})
+
 
         return pd.DataFrame(over_threshold)
 
