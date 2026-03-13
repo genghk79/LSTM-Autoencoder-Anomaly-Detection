@@ -8,3 +8,4 @@ seaborn
 pyreadr
 pyyaml
 tqdm
+python-json-logger
