@@ -40,8 +40,6 @@ Or install from the requirements file:
 pip install -r requirements.txt
 ```
 
-> **Note:** `python-json-logger` is also needed for the logging configuration but is not listed in `requirements.txt`.
-
 ### Configuration
 
 All hyperparameters and data paths are set in `configs/config.yaml`:
